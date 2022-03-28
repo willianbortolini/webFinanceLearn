@@ -22,9 +22,14 @@ var maxima = []
 var minima = []
 var maximo = 0
 var velocidade = 400;
+var comprado = false
+var vendido = false
+var posicao = 0;
+var lucroPrejuizo = 0
 $("#veloc").val(velocidade)
 fetchStock()
-
+var carteira = 5000.00
+$("#carteira").text(carteira)
 
 //quando clica no teclado
 
@@ -54,10 +59,22 @@ document.addEventListener('keydown', e => {
     if (e.keyCode == 38) {
         e.preventDefault();
         log("comprou a " + fechamento[local])
+        comprado = true;
+        posicao = fechamento[local]
     }
     if (e.keyCode == 40) {
         e.preventDefault();
-        log("down")
+        vendido = true;
+        posicao = fechamento[local]
+    }
+    if (e.keyCode == 96) {
+        e.preventDefault();
+        comprado = false;
+        vendido = false;
+        carteira += parseFloat(lucroPrejuizo)
+        imprimeCarteira(carteira)
+        $("#lp").text(0)
+        posicao = 0
     }
 
 });
@@ -69,7 +86,10 @@ $("#veloc").focusout(function () {
     myTimer = setInterval(loop, velocidade);
 });
 
-
+function imprimeCarteira(valor){
+    var novoFloat = parseFloat(valor).toFixed(2)
+    $("#carteira").text(novoFloat)
+}
 
 function fetchStock() {
     const API_KEY = "LZPK3ABRMMBD23DL";
@@ -88,22 +108,22 @@ function matematica() {
     for (let dia of Object.keys(cotacao)) {
         date.push(dia)
         var cosed = parseInt(cotacao[dia]["4. close"])
-        fechamento.push(cosed)
-        abertura.push(cotacao[dia]["1. open"])
-        minima.push(cotacao[dia]["3. low"])
-        maxima.push(cotacao[dia]["2. high"])
+        fechamento.push(parseFloat(cotacao[dia]["4. close"]).toFixed(2))
+        abertura.push(parseFloat(cotacao[dia]["1. open"]).toFixed(2))
+        minima.push(parseFloat(cotacao[dia]["3. low"]).toFixed(2))
+        maxima.push(parseFloat(cotacao[dia]["2. high"]).toFixed(2))
         if (cosed > maximo) {
             maximo = cosed
         }
     }
-    log(date.length)
-    log(fechamento.length)
+
     local = date.length;
     desenhagraficototal()
     loop()
 }
 
 var canvas = document.getElementById('game');
+
 var ctx = canvas.getContext('2d');
 
 var local = date.length;
@@ -113,7 +133,8 @@ var myTimer = setInterval(loop, velocidade);
 
 function desenhagraficototal() {
     if (canvas.getContext) {
-        ctx.clearRect(0, 0, 700, 700);
+        
+        ctx.clearRect(0, 0, 1000, 600);
         for (let d = 0; d < date.length; d++) {
             var passoLinha = canvas.width / date.length
             var passoY = canvas.height / maximo
@@ -142,8 +163,26 @@ function desenhagraficototal() {
     }
 }
 
-var quantidadedecandles = 50
+var quantidadedecandles = 60
 function loop() {
+
+    if(comprado == true){
+        lucroPrejuizo = (fechamento[local] - posicao).toFixed(2)
+        imprimeCarteira(carteira+parseFloat(lucroPrejuizo))
+        $("#lp").text(lucroPrejuizo)
+    }
+    if(vendido == true){
+        lucroPrejuizo = (posicao - fechamento[local]).toFixed(2)
+        imprimeCarteira(carteira+parseFloat(lucroPrejuizo))
+        $("#lp").text(lucroPrejuizo)
+    }
+
+    $("#max").text(maxima[local])
+    $("#min").text(minima[local])
+    $("#opem").text(abertura[local])
+    $("#close").text(fechamento[local])
+
+
     if (canvas.getContext) {
         desenhagraficototal()
 
