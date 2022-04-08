@@ -26,14 +26,17 @@ var comprado = false
 var vendido = false
 var posicao = 0;
 var lucroPrejuizo = 0
+var lote = 0
+var mao = 10
 $("#veloc").val(velocidade)
 fetchStock()
 var carteira = 5000.00
 $("#carteira").text(carteira)
+var graficoHeigth = 600
+var graficoWidth = 800
+    //quando clica no teclado
 
-//quando clica no teclado
-
-document.body.onkeyup = function (e) {
+document.body.onkeyup = function(e) {
     if (e.keyCode == 32) {
         e.preventDefault();
         log("clicou no espaço")
@@ -47,10 +50,10 @@ document.addEventListener('keydown', e => {
         if (pausado == false) {
             clearInterval(myTimer);
             pausado = true
-        }else{
+        } else {
             myTimer = setInterval(loop, velocidade);
             pausado = false
-        }   
+        }
     }
     if (e.keyCode == 39) {
         e.preventDefault();
@@ -58,35 +61,80 @@ document.addEventListener('keydown', e => {
     }
     if (e.keyCode == 38) {
         e.preventDefault();
-        log("comprou a " + fechamento[local])
-        comprado = true;
-        posicao = fechamento[local]
+        compra(mao)
     }
     if (e.keyCode == 40) {
         e.preventDefault();
-        vendido = true;
-        posicao = fechamento[local]
+        vende(mao)
     }
     if (e.keyCode == 96) {
         e.preventDefault();
-        comprado = false;
-        vendido = false;
-        carteira += parseFloat(lucroPrejuizo)
-        imprimeCarteira(carteira)
-        $("#lp").text(0)
-        posicao = 0
+        zeraOperacao()
     }
 
-});
+})
 
-$("#veloc").focusout(function () {
+function compra(quant) {
+    if (lote == 0) {
+        comprado = true;
+        posicao = fechamento[local]
+        lote += quant
+    } else if (vendido && (lote - quant) == 0) {
+        zeraOperacao()
+    } else if (vendido && (lote - quant) < 0) {
+        zeraOperacao()
+        console.log("virou a mao")
+        vende(quant - lote)
+    } else if (comprado) {
+        posicao = (lote * posicao + quant * fechamento[local]) / (lote + quant)
+        lote += quant
+    } else if (vendido) {
+        posicao = (lote * posicao - quant * fechamento[local]) / (lote - quant)
+        lote -= quant
+    }
+    $("#quantidade").text(lote)
+}
+
+function vende(quant) {
+    if (lote == 0) {
+        vendido = true;
+        posicao = fechamento[local]
+        lote += quant
+    } else if (comprado && (lote - quant) == 0) {
+        zeraOperacao()
+    } else if (comprado && (lote - quant) < 0) {
+        zeraOperacao()
+        console.log("virou a mao")
+        vende(quant - lote)
+    } else if (comprado) {
+        posicao = (lote * posicao - quant * fechamento[local]) / (lote - quant)
+        lote -= quant
+    } else if (vendido) {
+        posicao = (lote * posicao + quant * fechamento[local]) / (lote + quant)
+        lote += quant
+    }
+    $("#quantidade").text(lote)
+}
+
+function zeraOperacao() {
+    comprado = false;
+    vendido = false;
+    lote = 0
+    carteira += parseFloat(lucroPrejuizo)
+    imprimeCarteira(carteira)
+    $("#lp").text(0)
+    posicao = 0
+    $("#quantidade").text(lote)
+}
+
+$("#veloc").focusout(function() {
     log($(this).val())
     velocidade = $(this).val()
     clearInterval(myTimer);
     myTimer = setInterval(loop, velocidade);
 });
 
-function imprimeCarteira(valor){
+function imprimeCarteira(valor) {
     var novoFloat = parseFloat(valor).toFixed(2)
     $("#carteira").text(novoFloat)
 }
@@ -96,7 +144,7 @@ function fetchStock() {
     let API_call = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=GOOG&outputsize=full&apikey=' + API_KEY;
 
     $.getJSON(API_call)
-        .done(function (data) {
+        .done(function(data) {
             cotacao = data["Time Series (Daily)"]
             matematica()
         })
@@ -133,17 +181,16 @@ var myTimer = setInterval(loop, velocidade);
 
 function desenhagraficototal() {
     if (canvas.getContext) {
-        
         ctx.clearRect(0, 0, 1000, 600);
         for (let d = 0; d < date.length; d++) {
-            var passoLinha = canvas.width / date.length
-            var passoY = canvas.height / maximo
+            var passoLinha = graficoWidth / date.length
+            var passoY = graficoHeigth / maximo
             var larguraCandle = (passoLinha / 2)
             var afastamentoTopo = 40
-            var max = canvas.height - (passoY * maxima[d] - afastamentoTopo)
-            var min = canvas.height - (passoY * minima[d] - afastamentoTopo)
-            var aber = canvas.height - (passoY * abertura[d] - afastamentoTopo)
-            var fech = canvas.height - (passoY * fechamento[d] - afastamentoTopo)
+            var max = graficoHeigth - (passoY * maxima[d] - afastamentoTopo)
+            var min = graficoHeigth - (passoY * minima[d] - afastamentoTopo)
+            var aber = graficoHeigth - (passoY * abertura[d] - afastamentoTopo)
+            var fech = graficoHeigth - (passoY * fechamento[d] - afastamentoTopo)
             var x = (date.length - d) * passoLinha
 
             //ctx.restore();
@@ -160,20 +207,22 @@ function desenhagraficototal() {
             }
             ctx.stroke();
         }
+
     }
 }
 
 var quantidadedecandles = 60
+
 function loop() {
 
-    if(comprado == true){
-        lucroPrejuizo = (fechamento[local] - posicao).toFixed(2)
-        imprimeCarteira(carteira+parseFloat(lucroPrejuizo))
+    if (comprado == true) {
+        lucroPrejuizo = (fechamento[local] - posicao).toFixed(2) * lote
+        imprimeCarteira(carteira + parseFloat(lucroPrejuizo))
         $("#lp").text(lucroPrejuizo)
     }
-    if(vendido == true){
-        lucroPrejuizo = (posicao - fechamento[local]).toFixed(2)
-        imprimeCarteira(carteira+parseFloat(lucroPrejuizo))
+    if (vendido == true) {
+        lucroPrejuizo = (posicao - fechamento[local]).toFixed(2) * lote
+        imprimeCarteira(carteira + parseFloat(lucroPrejuizo))
         $("#lp").text(lucroPrejuizo)
     }
 
@@ -187,18 +236,15 @@ function loop() {
         desenhagraficototal()
 
 
-        var passoLinha = canvas.width / date.length
-        var passoLinha2 = canvas.width / quantidadedecandles
-        var passoY = canvas.height / maximo
+        var passoLinha = graficoWidth / date.length
+        var passoLinha2 = graficoWidth / quantidadedecandles
+        var passoY = graficoHeigth / maximo
         var larguraCandle = (passoLinha2 / 2)
-
+        ctx.font = "18px Arial";
         if (local > 0) {
-            //ctx.clearRect(0, 0, 700, 700);
-
-
-
             var topo = 0
             var fundo = 7000
+            var localPosicao = 0
             for (let d = 0; d < quantidadedecandles; d++) {
                 if (topo < maxima[local + d]) {
                     topo = maxima[local + d]
@@ -207,15 +253,14 @@ function loop() {
                     fundo = minima[local + d]
                 }
             }
-            var passoY2 = canvas.height / (topo - fundo)
+            var passoY2 = graficoHeigth / (topo - fundo)
+            localPosicao = graficoHeigth - ((posicao - fundo) * passoY2)
             for (let d = 0; d < quantidadedecandles; d++) {
-
-                var max = canvas.height - ((maxima[local + d] - fundo) * passoY2)
-
-                var min = canvas.height - ((minima[local + d] - fundo) * passoY2)
-                var aber = canvas.height - ((abertura[local + d] - fundo) * passoY2)
-                var fech = canvas.height - ((fechamento[local + d] - fundo) * passoY2)
-                var x = (canvas.width - d * passoLinha2) - passoLinha2
+                var max = graficoHeigth - ((maxima[local + d] - fundo) * passoY2)
+                var min = graficoHeigth - ((minima[local + d] - fundo) * passoY2)
+                var aber = graficoHeigth - ((abertura[local + d] - fundo) * passoY2)
+                var fech = graficoHeigth - ((fechamento[local + d] - fundo) * passoY2)
+                var x = (graficoWidth - d * passoLinha2) - passoLinha2
                 ctx.fillStyle = "#a6a6a6";
                 ctx.fillRect(x, max, 1, (min - max));
                 if (aber > fech) {
@@ -225,9 +270,23 @@ function loop() {
                     ctx.fillStyle = "#db3b3b";
                     ctx.fillRect(x - larguraCandle, fech, larguraCandle * 2, (aber - fech));
                 }
+                if (d == 0) {
+                    //ctx.fillRect(0, fech, graficoWidth, 2);
+                    ctx.fillText(fechamento[local + d], graficoWidth, fech + 10);
+                }
             }
-
-
+            if (posicao > 0 && localPosicao < graficoHeigth) {
+                ctx.fillRect(0, localPosicao, graficoWidth, 2);
+                ctx.fillText(posicao, graficoWidth, localPosicao + 10);
+            }
+            if (posicao > 0 && localPosicao > graficoHeigth) {
+                ctx.fillRect(0, graficoHeigth - 4, graficoWidth, 2);
+                ctx.fillText(posicao, graficoWidth, graficoHeigth - 10);
+            }
+            if (posicao > 0 && localPosicao < 0) {
+                ctx.fillRect(0, 4, graficoWidth, 2);
+                ctx.fillText(posicao, graficoWidth, 20);
+            }
         }
 
     }
