@@ -21,7 +21,7 @@ var abertura = []
 var maxima = []
 var minima = []
 var maximo = 0
-var velocidade = 400;
+var velocidade = 100;
 var comprado = false
 var vendido = false
 var posicao = 0;
@@ -41,6 +41,10 @@ document.body.onkeyup = function(e) {
         e.preventDefault();
         log("clicou no espaço")
     }
+}
+
+function aleatorio(fech, tamanhoTotal) {
+    return fech + (tamanhoTotal / 20) - Math.random() * (tamanhoTotal / 10);
 }
 
 var pausado = false
@@ -70,6 +74,12 @@ document.addEventListener('keydown', e => {
     if (e.keyCode == 96) {
         e.preventDefault();
         zeraOperacao()
+    }
+
+    if (e.keyCode == 37) {
+        e.preventDefault();
+        local = (parseFloat(local) + 0.02).toFixed(2)
+        loop()
     }
 
 })
@@ -180,7 +190,7 @@ var myTimer = setInterval(loop, velocidade);
 
 
 function desenhagraficototal() {
-    if (canvas.getContext) {
+    /*if (canvas.getContext) {
         ctx.clearRect(0, 0, 1000, 600);
         for (let d = 0; d < date.length; d++) {
             var passoLinha = graficoWidth / date.length
@@ -208,13 +218,14 @@ function desenhagraficototal() {
             ctx.stroke();
         }
 
-    }
+    }*/
 }
 
 var quantidadedecandles = 60
+var valorAtual = 0
 
 function loop() {
-
+    ctx.clearRect(0, 0, 1000, 600);
     if (comprado == true) {
         lucroPrejuizo = (fechamento[local] - posicao).toFixed(2) * lote
         imprimeCarteira(carteira + parseFloat(lucroPrejuizo))
@@ -226,43 +237,125 @@ function loop() {
         $("#lp").text(lucroPrejuizo)
     }
 
-    $("#max").text(maxima[local])
-    $("#min").text(minima[local])
-    $("#opem").text(abertura[local])
-    $("#close").text(fechamento[local])
+
 
 
     if (canvas.getContext) {
         desenhagraficototal()
 
+        //console.log((local - parseInt(local)))
+        var localParsial = Math.round((local - parseInt(local)) * 100)
+
+        var localInteiro = parseInt(local)
+
+        $("#max").text(maxima[localInteiro])
+        $("#min").text(minima[localInteiro])
+        $("#opem").text(abertura[localInteiro])
+        $("#close").text(fechamento[localInteiro])
 
         var passoLinha = graficoWidth / date.length
         var passoLinha2 = graficoWidth / quantidadedecandles
         var passoY = graficoHeigth / maximo
         var larguraCandle = (passoLinha2 / 2)
         ctx.font = "18px Arial";
-        if (local > 0) {
+        if (localInteiro > 0) {
             var topo = 0
             var fundo = 7000
             var localPosicao = 0
             for (let d = 0; d < quantidadedecandles; d++) {
-                if (topo < maxima[local + d]) {
-                    topo = maxima[local + d]
+                if (topo < maxima[localInteiro + d]) {
+                    topo = maxima[localInteiro + d]
                 }
-                if (fundo > minima[local + d]) {
-                    fundo = minima[local + d]
+                if (fundo > minima[localInteiro + d]) {
+                    fundo = minima[localInteiro + d]
                 }
             }
             var passoY2 = graficoHeigth / (topo - fundo)
             localPosicao = graficoHeigth - ((posicao - fundo) * passoY2)
             for (let d = 0; d < quantidadedecandles; d++) {
-                var max = graficoHeigth - ((maxima[local + d] - fundo) * passoY2)
-                var min = graficoHeigth - ((minima[local + d] - fundo) * passoY2)
-                var aber = graficoHeigth - ((abertura[local + d] - fundo) * passoY2)
-                var fech = graficoHeigth - ((fechamento[local + d] - fundo) * passoY2)
+                var max = graficoHeigth - ((maxima[localInteiro + d] - fundo) * passoY2)
+                var min = graficoHeigth - ((minima[localInteiro + d] - fundo) * passoY2)
+                var aber = graficoHeigth - ((abertura[localInteiro + d] - fundo) * passoY2)
+                var fech = graficoHeigth - ((fechamento[localInteiro + d] - fundo) * passoY2)
+                    //animação de movimento
+                var drawMin = min
+                var drawMax = max
+                if (d == 0) {
+                    if ((aber - fech) > 0) { //subindo
+                        var sombraSuperior = max - fech
+                        var corpo = fech - aber
+                        var sombraInferior = aber - min
+                        var tamanhoTotal = max - min
+                        var porcentoSombraSuperior = parseInt(sombraSuperior / tamanhoTotal * 100)
+                        var porcentoCortpo = parseInt(corpo / tamanhoTotal * 100)
+                        var porcentoSombraInferior = parseInt(sombraInferior / tamanhoTotal * 100)
+                            //vai até sombra superior e volta
+                            //console.log(porcentoSombraSuperior + "-" + porcentoCortpo + "-" + porcentoSombraInferior)
+                        var metadePorcento = parseInt(porcentoSombraSuperior / 2)
+                        var metadePorCentoInferior = parseInt(porcentoSombraInferior / 2)
+                        if (metadePorCentoInferior > 100 - localParsial) {
+                            //sobe a sombra
+                            var acrecimoPasso = sombraInferior / metadePorCentoInferior * (100 - localParsial)
+                            fech = aber - acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                            drawMax = fech
+                            drawMin = aber
+                        } else if (porcentoSombraInferior > 100 - localParsial) {
+                            //desce a sombra
+                            var acrecimoPasso = sombraInferior / metadePorCentoInferior * (100 - localParsial - metadePorCentoInferior)
+                            fech = min + acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                            drawMax = fech
+                        } else if (metadePorcento < localParsial) {
+                            var acrecimoPasso = (corpo + sombraSuperior) / (porcentoCortpo + metadePorcento) * (100 - localParsial - porcentoSombraInferior)
+                            fech = aber + acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                            drawMax = fech
+                        } else if ((100 - metadePorcento) > localParsial) {
+                            var acrecimoPasso = (sombraSuperior) / (metadePorcento) * (metadePorcento - localParsial)
+                            fech = max - acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                        }
+                    } else { //caindo
+                        var sombraSuperior = max - aber
+                        var corpo = aber - fech
+                        var sombraInferior = fech - min
+                        var tamanhoTotal = max - min
+                        var porcentoSombraSuperior = parseInt(sombraSuperior / tamanhoTotal * 100)
+                        var porcentoCortpo = parseInt(corpo / tamanhoTotal * 100)
+                        var porcentoSombraInferior = parseInt(sombraInferior / tamanhoTotal * 100)
+                            //vai até sombra superior e volta
+                        var metadePorcento = parseInt(porcentoSombraSuperior / 2)
+                        var metadePorCentoInferior = parseInt(porcentoSombraInferior / 2)
+                        if (metadePorcento > 100 - localParsial) {
+                            //sobe a sombra
+                            var acrecimoPasso = sombraSuperior / metadePorcento * (100 - localParsial)
+                            fech = aber + acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                            drawMax = fech
+                            drawMin = aber
+                        } else if (porcentoSombraSuperior > 100 - localParsial) {
+                            //desce a sombra
+                            var acrecimoPasso = sombraSuperior / metadePorcento * (100 - localParsial - metadePorcento)
+                            fech = max - acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                            drawMin = aber
+                        } else if (100 - metadePorCentoInferior > localParsial && localParsial > metadePorCentoInferior) {
+                            var acrecimoPasso = (corpo + sombraInferior) / (porcentoCortpo + metadePorCentoInferior) * (100 - localParsial - porcentoSombraSuperior)
+                            fech = aber - acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                            drawMin = fech
+                        } else if ((100 - metadePorCentoInferior) > localParsial) {
+                            var acrecimoPasso = (sombraInferior) / (metadePorCentoInferior) * (metadePorCentoInferior - localParsial)
+                            fech = min + acrecimoPasso
+                            fech = aleatorio(fech, tamanhoTotal)
+                        }
+                    }
+                }
+
                 var x = (graficoWidth - d * passoLinha2) - passoLinha2
                 ctx.fillStyle = "#a6a6a6";
-                ctx.fillRect(x, max, 1, (min - max));
+                ctx.fillRect(x, drawMax, 1, (drawMin - drawMax));
                 if (aber > fech) {
                     ctx.fillStyle = "#62c3d9";
                     ctx.fillRect(x - larguraCandle, aber, larguraCandle * 2, (fech - aber));
@@ -272,7 +365,9 @@ function loop() {
                 }
                 if (d == 0) {
                     //ctx.fillRect(0, fech, graficoWidth, 2);
-                    ctx.fillText(fechamento[local + d], graficoWidth, fech + 10);
+
+                    valorAtual = ((parseFloat(graficoHeigth) - parseFloat(fech)) / parseFloat(passoY2)) + parseFloat(fundo)
+                    ctx.fillText((valorAtual).toFixed(2), graficoWidth, fech + 10);
                 }
             }
             if (posicao > 0 && localPosicao < graficoHeigth) {
@@ -290,5 +385,6 @@ function loop() {
         }
 
     }
-    local--
+    local = parseFloat(local - 0.01).toFixed(2)
+
 }
